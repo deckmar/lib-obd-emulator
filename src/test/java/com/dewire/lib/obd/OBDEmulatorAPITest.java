@@ -50,13 +50,15 @@ public class OBDEmulatorAPITest {
         car.setEngineRPM(2400);
         car.setEngineFuelRateLitersPerHour(5);  // Liters per hour -- 5 is a good consumption, 10 is quite high
         car.setFuelTankPercentage(70);
+        car.setMILDistanceTraveledKm(0);
+        car.setMILTimeTraveledMin(0);
 
-        for(int speed = 0; speed <= 140; speed += 140) {
+        for(int speed = 0; speed <= 140; speed += 30) {
             LOG.debug("~~~~~~");
             car.setSpeed(speed);
             car.setEngineRPM(2400 + speed * 3);
             car.setFuelTankPercentage(70 - speed/10);
-            car.sleep(8000);
+            car.sleep(1500);
         }
 
         LOG.debug("Breaking from 160 km/h to 90 km/h");
@@ -71,6 +73,7 @@ public class OBDEmulatorAPITest {
 
         car.setEngineStarted(false);
 
+        car.close();
     }
 
     @Test
@@ -84,6 +87,14 @@ public class OBDEmulatorAPITest {
         LOG.debug("Read fuel tank: {} %", car.getFuelTankPercentage());
 
 
+    }
+
+
+    @Test
+    public void test_make_two_trips_with_short_break_between() throws Exception {
+        test_make_trip();
+        car.sleep(20000);
+        test_make_trip();
     }
 
 }

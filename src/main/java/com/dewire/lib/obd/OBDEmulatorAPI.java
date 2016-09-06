@@ -54,7 +54,7 @@ public class OBDEmulatorAPI {
         return null;
     }
 
-    public void setEngineStarted(boolean started) throws IOException {
+    public void setEngineStarted(boolean started) {
         LOG.debug("[SET] Engine: " + (started ? "ON" : "OFF"));
         write(port.getOutputStream(), "ATACC" + (started ? "1" : "0"));
         readUntilEnd(port.getInputStream());
@@ -65,49 +65,81 @@ public class OBDEmulatorAPI {
     }
 
 
-    public void setEngineRPM(int value) throws IOException {
+    public void setEngineRPM(int value) {
         LOG.debug("[SET] Engine: " + value + " RPM");
         write(port.getOutputStream(), String.format("ATSET %s=%d", OBD_PID_ENGINE_RPM, value));
         readUntilEnd(port.getInputStream());
     }
 
-    public int getSpeed() throws Exception {
+    public int getSpeed() {
         return hexToInteger(getPIDValue(OBD_PID_VEHICLE_SPEED));
     }
 
-    public void setSpeed(int value) throws IOException {
+    public void setSpeed(int value) {
         LOG.debug("[SET] Speed: " + value + " km/h");
         write(port.getOutputStream(), String.format("ATSET %s=%d", OBD_PID_VEHICLE_SPEED, value));
         readUntilEnd(port.getInputStream());
     }
 
-    public int getBatteryVoltage() throws Exception {
+    public int getBatteryVoltage() {
         return hexToInteger(getPIDValue(OBD_PID_BATTERY_VOLTAGE));
     }
 
-    public void setBatteryVoltage(int value) throws IOException {
+    public void setBatteryVoltage(int value) {
         LOG.debug("[SET] Battery voltage: " + value + " V");
         write(port.getOutputStream(), String.format("ATSET %s=%d", OBD_PID_BATTERY_VOLTAGE, value));
         readUntilEnd(port.getInputStream());
     }
 
-    public int getFuelTankPercentage() throws Exception {
+    public int getFuelTankPercentage() {
         return (int) ((hexToInteger(getPIDValue(OBD_PID_FUEL_TANK_LEVEL)) / 254.0) * 100);
     }
 
-    public void setFuelTankPercentage(int value) throws IOException {
+    public void setFuelTankPercentage(int value) {
         LOG.debug("[SET] Fuel tank: " + value + " %");
         write(port.getOutputStream(), String.format("ATSET %s=%d", OBD_PID_FUEL_TANK_LEVEL, value));
         readUntilEnd(port.getInputStream());
     }
 
-    public int getEngineFuelRate() throws Exception {
+    public int getEngineFuelRate() {
         return hexToInteger(getPIDValue(OBD_PID_ENGINE_FUEL_RATE)) / 20;
     }
 
-    public void setEngineFuelRateLitersPerHour(int value) throws IOException {
+    public void setEngineFuelRateLitersPerHour(int value) {
         LOG.debug("[SET] Engine fuel consumtion rate: " + value + " L/h");
         write(port.getOutputStream(), String.format("ATSET %s=%d", OBD_PID_ENGINE_FUEL_RATE, value));
+        readUntilEnd(port.getInputStream());
+    }
+
+    public void setMILTimeTraveledMin(int value) {
+        LOG.debug("[SET] MIL Time traveled with light on (minutes): " + value);
+        write(port.getOutputStream(), String.format("ATSET 0140=" + value));
+        readUntilEnd(port.getInputStream());
+    }
+
+    public void setMILDistanceTraveledKm(int value) {
+        LOG.debug("[SET] MIL Distance traveled with light on (km): " + value);
+        write(port.getOutputStream(), String.format("ATSET 0121=" + value));
+        readUntilEnd(port.getInputStream());
+    }
+
+    public void clearDTC() {
+        LOG.debug("[CLEARING DTC CODES]");
+        write(port.getOutputStream(), String.format("ATCLR"));
+        readUntilEnd(port.getInputStream());
+    }
+
+    public void setVINReportingEnabled(boolean enabled) {
+        LOG.debug("[SET] VIN reporting " + (enabled ? "enabled" : "disabled"));
+        write(port.getOutputStream(), enabled ? "ATENABLEVIN" : "ATDISABLEVIN");
+        readUntilEnd(port.getInputStream());
+    }
+
+    public void setVINReportingNr(String vin) {
+        vin = vin.toUpperCase();
+        while(vin.length() < 17) vin += " ";
+        LOG.debug("[SET] VIN reporting: " + vin);
+        write(port.getOutputStream(), String.format("ATSET VIN=%s", vin));
         readUntilEnd(port.getInputStream());
     }
 
@@ -119,10 +151,10 @@ public class OBDEmulatorAPI {
     }
 
     public void close() {
-
+        port.closePort();
     }
 
-    protected String getPIDValue(String pid) throws Exception {
+    protected String getPIDValue(String pid) {
         // Read away any "garbage"
         readUntilEnd(port.getInputStream());
 
@@ -137,7 +169,7 @@ public class OBDEmulatorAPI {
         return resp.split("=")[1].trim();
     }
 
-    protected boolean setPIDValue(String pid, String value) throws Exception {
+    protected boolean setPIDValue(String pid, String value) {
         write(port.getOutputStream(), "ATSET " + pid + " " + value);
 
         String resp = readUntilEnd(port.getInputStream());
@@ -146,28 +178,39 @@ public class OBDEmulatorAPI {
     }
 
 
-    protected void readUntilEndAndPrint(InputStream ins) throws Exception {
+    protected void readUntilEndAndPrint(InputStream ins) {
         String msg = readUntilEnd(ins);
         LOG.debug(msg);
     }
 
 
-    protected String readUntilEnd(InputStream ins) throws IOException {
+    protected String readUntilEnd(InputStream ins) {
         int n;
         String msg = "";
         sleep(100);
-        while ((n = ins.available()) > 0) {
-            for (int i = 0; i < n; ++i) {
-                int read = ins.read();
-                if (read != 13) msg += (char) read;
+        try {
+            while ((n = ins.available()) > 0) {
+                for (int i = 0; i < n; ++i) {
+                    int read = ins.read();
+                    //LOG.debug("Read char: " + (read == '\r' ? '§' : read) + " (" + ((char)read == '\r' ? '§' : (char)read) + ")");
+                    if (read != 13) msg += (char) read;
+                }
+                sleep(100);
             }
-            sleep(100);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+        //msg = msg.replaceAll("\r", "§_§");
+        //LOG.debug("Read: " + msg + " ("+msg.length()+")");
         return msg;
     }
 
-    protected void write(OutputStream os, String msg) throws IOException {
-        os.write((msg + "\r").getBytes("US-ASCII"));
+    protected void write(OutputStream os, String msg) {
+        try {
+            os.write((msg + "\r").getBytes("US-ASCII"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     protected int hexToInteger(String hex) {
