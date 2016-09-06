@@ -29,10 +29,11 @@ public class OBDEmulatorAPI {
 
     }
 
-    public SerialPort connect(String comPort) throws Exception {
+    public SerialPort connect(String comPort) {
         LOG.debug("Listing all serial ports:");
         for (SerialPort serialPort : SerialPort.getCommPorts()) {
             LOG.debug(serialPort.getSystemPortName());
+            if (comPort.equals("CHOOSE_FIRST_AVAILABLE")) comPort = serialPort.getSystemPortName();
         }
 
         LOG.debug("Trying to connect to: " + comPort);
