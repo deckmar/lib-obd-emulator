@@ -123,6 +123,12 @@ public class OBDEmulatorAPI {
         readUntilEnd(port.getInputStream());
     }
 
+    public void setMILOn() {
+        LOG.debug("[SET] MIL on by adding two DTC engine error codes (use clearDTC() to turn MIL off)");
+        write(port.getOutputStream(), String.format("ATSET DTC=P0302,P0493"));
+        readUntilEnd(port.getInputStream());
+    }
+
     public void clearDTC() {
         LOG.debug("[CLEARING DTC CODES]");
         write(port.getOutputStream(), String.format("ATCLR"));
