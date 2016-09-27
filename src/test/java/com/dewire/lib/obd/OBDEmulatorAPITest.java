@@ -97,4 +97,11 @@ public class OBDEmulatorAPITest {
         test_make_trip();
     }
 
+    @Test
+    public void test_make_two_trips_with_long_break_between() throws Exception {
+        test_make_trip();
+        car.sleep(130000);
+        test_make_trip();
+    }
+
 }
