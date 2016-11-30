@@ -4,6 +4,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * @author Johan Deckmar
@@ -85,10 +86,7 @@ public class OBDEmulatorAPITest {
 
         LOG.debug("Read fuel rate: {} L/h", car.getEngineFuelRate());
         LOG.debug("Read fuel tank: {} %", car.getFuelTankPercentage());
-
-
     }
-
 
     @Test
     public void test_make_two_trips_with_short_break_between() throws Exception {
@@ -104,4 +102,48 @@ public class OBDEmulatorAPITest {
         test_make_trip();
     }
 
+    @Test
+    public void test_long_trip() throws Exception {
+        car.connect(COM_PORT_NAME_OBDII_EMULATOR);
+        car.setVINReportingEnabled(false);
+        car.setEngineStarted(true);
+        car.setEngineFuelRateLitersPerHour(5);
+        car.setFuelTankPercentage(50);
+
+        //45 meters per second = 162 km per hour
+        for (int tripLength = 0; tripLength <= 80000; tripLength += 45){
+            car.setEngineRPM(ThreadLocalRandom.current().nextInt(1500,2500));
+            car.setSpeed(ThreadLocalRandom.current().nextInt(160,170)); //Produce wildly fluctuating speed
+            car.sleep(1000);
+        }
+
+        car.setSpeed(0);
+        car.setEngineRPM(0);
+        car.setEngineStarted(false);
+    }
+
+    @Test
+    public void test_time_based_trip() throws Exception {
+        car.connect(COM_PORT_NAME_OBDII_EMULATOR);
+        car.setOBDProtocol("CAN_11B_500K");
+        car.setVINReportingEnabled(true);
+        //car.setVINReportingNr("");
+        car.setEngineStarted(true);
+        car.setMILPID(true);
+        car.setMILDistanceTraveledKm(25);
+        car.setEngineFuelRateLitersPerHour(5);
+        car.setFuelTankPercentage(50);
+        car.setDTC03Value("P0105,P0200,P0300,P0500,P0600,C0077");
+
+        long t = System.currentTimeMillis();
+        long end = t+60000; //How long trip should last (milliseconds)
+        while(System.currentTimeMillis() < end) {
+            car.setEngineRPM(ThreadLocalRandom.current().nextInt(2500,2700));
+            car.setSpeed(72); //72km/h = 20 meters per second, easy to calculate an expected distance
+        }
+
+        car.setEngineRPM(0);
+        car.setSpeed(0);
+        car.setEngineStarted(false);
+    }
 }

@@ -22,6 +22,8 @@ public class OBDEmulatorAPI {
     public static final String OBD_PID_BATTERY_VOLTAGE = "0142";
     public static final String OBD_PID_FUEL_TANK_LEVEL = "012F";
     public static final String OBD_PID_ENGINE_FUEL_RATE= "015E";
+    public static final String OBD_PID_MIL= "01A7";
+    public static final String OBD_PID_KM_TRAVELED_WITH_MIL= "0121";
     protected SerialPort port;
 
 
@@ -119,7 +121,7 @@ public class OBDEmulatorAPI {
 
     public void setMILDistanceTraveledKm(int value) {
         LOG.debug("[SET] MIL Distance traveled with light on (km): " + value);
-        write(port.getOutputStream(), String.format("ATSET 0121=" + value));
+        write(port.getOutputStream(), String.format("ATSET %s=%d", OBD_PID_KM_TRAVELED_WITH_MIL, value));
         readUntilEnd(port.getInputStream());
     }
 
@@ -137,7 +139,7 @@ public class OBDEmulatorAPI {
 
     public void setVINReportingEnabled(boolean enabled) {
         LOG.debug("[SET] VIN reporting " + (enabled ? "enabled" : "disabled"));
-        write(port.getOutputStream(), enabled ? "ATENABLEVIN" : "ATDISABLEVIN");
+        write(port.getOutputStream(), "ATVIN" + (enabled ? "1" : "0"));
         readUntilEnd(port.getInputStream());
     }
 
@@ -146,6 +148,24 @@ public class OBDEmulatorAPI {
         while(vin.length() < 17) vin += " ";
         LOG.debug("[SET] VIN reporting: " + vin);
         write(port.getOutputStream(), String.format("ATSET VIN=%s", vin));
+        readUntilEnd(port.getInputStream());
+    }
+
+    public void setOBDProtocol(String value) {
+        LOG.debug("[SET] OBD-II protocol:" + value);
+        write(port.getOutputStream(), "ATBUS " + value);
+        readUntilEnd(port.getInputStream());
+    }
+
+    public void setDTC03Value(String value) throws IOException {
+        LOG.debug("[SET] DTC (Mode 3) value:" + value);
+        write(port.getOutputStream(), "ATSET DTC=" + value);
+        readUntilEnd(port.getInputStream());
+    }
+
+    public void setMILPID(boolean enabled) throws IOException {
+        LOG.debug("[SET] MIL: " + (enabled ? "ON" : "OFF"));
+        write(port.getOutputStream(), String.format("ATSET %s=%d", OBD_PID_MIL, (enabled ? 1 : 0)));
         readUntilEnd(port.getInputStream());
     }
 
